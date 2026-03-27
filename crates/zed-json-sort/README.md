@@ -28,21 +28,31 @@ The extension checks your `PATH` for `json-sort-server` before attempting a down
 2. Open the code actions menu (`Cmd+.`).
 3. Select a sort action from the list.
 
-The entire file is sorted and replaced in-place.
+## Sort Scopes
+
+Actions are grouped into three scopes:
+
+- **Deep Sort** — sorts the entire document recursively (all nested objects and arrays).
+- **Shallow Sort** — sorts only the immediate top-level keys of the root object; nested structures are left untouched.
+- **Subtree Sort** — sorts the object or array under the cursor and all of its descendants. Only appears when the cursor is inside a nested (non-root) container.
 
 ## Available Sort Actions
 
-| Action | Description |
+Each scope offers the same 9 sort strategies:
+
+| Strategy | Description |
 |---|---|
-| Sort JSON: Ascending | Sort object keys A→Z |
-| Sort JSON: Descending | Sort object keys Z→A |
-| Sort JSON: Randomize | Shuffle object keys randomly |
-| Sort JSON: By Value | Sort object entries by their values |
-| Sort JSON: By Key Length | Sort object keys by string length |
-| Sort JSON: By Value Length | Sort entries by the length/size of values |
-| Sort JSON: By Value Type | Group entries by JSON type (bool, null, number, string, array, object) |
-| Sort JSON: Sort List Items | Sort array elements |
-| Sort JSON: Sort All (Objects + Lists) | Sort both object keys and array elements |
+| Ascending | Sort object keys A→Z |
+| Descending | Sort object keys Z→A |
+| Randomize | Shuffle object keys randomly |
+| By Value | Sort object entries by their values |
+| By Key Length | Sort object keys by string length |
+| By Value Length | Sort entries by the length/size of values |
+| By Value Type | Group entries by JSON type (bool, null, number, string, array, object) |
+| Sort List Items | Sort array elements |
+| Sort All (Objects + Lists) | Sort both object keys and array elements |
+
+For example, opening the code actions menu while inside a nested object will show actions like `Deep Sort: Ascending`, `Shallow Sort: Ascending`, and `Subtree Sort: Ascending`.
 
 ## Configuration
 
