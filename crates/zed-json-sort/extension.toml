@@ -4,8 +4,8 @@ description = "Sort JSON and JSONC files with multiple sorting strategies"
 version = "0.1.0"
 schema_version = 1
 authors = ["L4N3 <labs@l4n3.net>"]
-repository = "https://github.com/l4n3-labs/rust"
+repository = "https://github.com/l4n3-labs/rust/crates/zed-json-sort"
 
 [language_servers.json-sort-server]
-name = "JSON Sort Server"
+name = "JSON Sort"
 languages = ["JSON", "JSONC"]
