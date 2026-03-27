@@ -2,7 +2,7 @@ name: Release
 
 on:
   push:
-    tags: ["v*"]
+    tags: ["json-sort-server/v*"]
 
 permissions:
   contents: write
