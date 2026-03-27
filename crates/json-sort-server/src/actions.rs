@@ -8,12 +8,24 @@ pub struct ActionDef {
     pub options: fn() -> SortOptions,
 }
 
+/// Build the "Shallow Sort" variant of an action title,
+/// e.g. `"Deep Sort: Ascending"` → `"Shallow Sort: Ascending"`.
+pub fn shallow_title(action: &ActionDef) -> String {
+    action.title.replace("Deep Sort:", "Shallow Sort:")
+}
+
+/// Build the "Subtree Sort" variant of an action title,
+/// e.g. `"Deep Sort: Ascending"` → `"Subtree Sort: Ascending"`.
+pub fn subtree_title(action: &ActionDef) -> String {
+    action.title.replace("Deep Sort:", "Subtree Sort:")
+}
+
 /// The 9 available sort actions, indexed by position.
 ///
 /// The index is used as the action identifier in `code_action_resolve`.
 pub const ACTIONS: &[ActionDef] = &[
     ActionDef {
-        title: "Sort JSON: Ascending",
+        title: "Deep Sort: Ascending",
         options: || SortOptions {
             direction: SortDirection::Ascending,
             sort_by: SortBy::Key,
@@ -22,7 +34,7 @@ pub const ACTIONS: &[ActionDef] = &[
         },
     },
     ActionDef {
-        title: "Sort JSON: Descending",
+        title: "Deep Sort: Descending",
         options: || SortOptions {
             direction: SortDirection::Descending,
             sort_by: SortBy::Key,
@@ -31,7 +43,7 @@ pub const ACTIONS: &[ActionDef] = &[
         },
     },
     ActionDef {
-        title: "Sort JSON: Randomize",
+        title: "Deep Sort: Randomize",
         options: || SortOptions {
             direction: SortDirection::Random,
             sort_by: SortBy::Key,
@@ -40,27 +52,27 @@ pub const ACTIONS: &[ActionDef] = &[
         },
     },
     ActionDef {
-        title: "Sort JSON: By Value",
+        title: "Deep Sort: By Value",
         options: || SortOptions { sort_by: SortBy::Value, ..Default::default() },
     },
     ActionDef {
-        title: "Sort JSON: By Key Length",
+        title: "Deep Sort: By Key Length",
         options: || SortOptions { sort_by: SortBy::KeyLength, ..Default::default() },
     },
     ActionDef {
-        title: "Sort JSON: By Value Length",
+        title: "Deep Sort: By Value Length",
         options: || SortOptions { sort_by: SortBy::ValueLength, ..Default::default() },
     },
     ActionDef {
-        title: "Sort JSON: By Value Type",
+        title: "Deep Sort: By Value Type",
         options: || SortOptions { sort_by: SortBy::ValueType, ..Default::default() },
     },
     ActionDef {
-        title: "Sort JSON: Sort List Items",
+        title: "Deep Sort: Sort List Items",
         options: || SortOptions { target: SortTarget::ListItems, ..Default::default() },
     },
     ActionDef {
-        title: "Sort JSON: Sort All (Objects + Lists)",
+        title: "Deep Sort: Sort All (Objects + Lists)",
         options: || SortOptions { target: SortTarget::Both, ..Default::default() },
     },
 ];
@@ -78,17 +90,25 @@ mod tests {
     fn each_action_produces_valid_options() {
         for action in ACTIONS {
             let options = (action.options)();
-            // Verify we can construct options without panic
             assert!(!action.title.is_empty());
-            // Verify the options have a valid direction
             let _ = options.direction;
         }
     }
 
     #[test]
     fn ascending_is_first() {
-        assert_eq!(ACTIONS[0].title, "Sort JSON: Ascending");
+        assert_eq!(ACTIONS[0].title, "Deep Sort: Ascending");
         let options = (ACTIONS[0].options)();
         assert_eq!(options.direction, SortDirection::Ascending);
+    }
+
+    #[test]
+    fn shallow_title_replaces_prefix() {
+        assert_eq!(shallow_title(&ACTIONS[0]), "Shallow Sort: Ascending");
+    }
+
+    #[test]
+    fn subtree_title_replaces_prefix() {
+        assert_eq!(subtree_title(&ACTIONS[0]), "Subtree Sort: Ascending");
     }
 }

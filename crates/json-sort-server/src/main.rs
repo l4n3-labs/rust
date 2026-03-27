@@ -6,6 +6,7 @@
 
 mod actions;
 mod backend;
+mod cursor;
 mod documents;
 
 use backend::Backend;
