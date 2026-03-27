@@ -91,9 +91,9 @@ impl JsonSortExtension {
             if asset_name.ends_with(".zip") { zed::DownloadedFileType::Zip } else { zed::DownloadedFileType::GzipTar };
 
         zed::download_file(&asset.download_url, "json-sort-server", file_type)?;
-        zed::make_file_executable("json-sort-server")?;
+        zed::make_file_executable("json-sort-server/json-sort-server")?;
 
-        Ok("json-sort-server".to_string())
+        Ok("json-sort-server/json-sort-server".to_string())
     }
 }
 
