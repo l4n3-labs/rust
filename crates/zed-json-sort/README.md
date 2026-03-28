@@ -67,19 +67,57 @@ So if your cursor is inside a nested object, the code actions menu shows things 
 
 ## Configuration
 
-Add LSP settings in your Zed `settings.json` (open with `Cmd+,`):
+Add LSP settings in your Zed `settings.json` (open with `Cmd+,`). All scopes and actions are enabled by default — you only need to configure what you want to disable.
+
+A [JSON Schema](../json-sort-server/settings-schema.json) is available for the settings object.
 
 ```json
 {
   "lsp": {
     "json-sort-server": {
-      "initialization_options": {}
+      "initialization_options": {
+        "scopes": {
+          "deep": true,
+          "shallow": false,
+          "subtree": { "ascending": true, "randomize": false }
+        },
+        "actions": {
+          "randomize": false,
+          "by_value_type": false
+        }
+      }
     }
   }
 }
 ```
 
-The `initialization_options` object gets passed to the LSP server on startup.
+### Scopes
+
+Each scope (`deep`, `shallow`, `subtree`) accepts:
+
+| Value | Meaning |
+|---|---|
+| `true` | Enabled — uses the global `actions` settings (default) |
+| `false` | Disabled — no code actions for this scope |
+| `{ ... }` | Enabled with per-scope action overrides, independent of global `actions` |
+
+### Actions
+
+Toggle individual sort strategies globally or per-scope. All default to `true`.
+
+| Key | Strategy |
+|---|---|
+| `ascending` | Sort keys A→Z |
+| `descending` | Sort keys Z→A |
+| `randomize` | Shuffle keys randomly |
+| `by_value` | Sort entries by their values |
+| `by_key_length` | Sort keys by string length |
+| `by_value_length` | Sort entries by the length/size of values |
+| `by_value_type` | Group entries by JSON type |
+| `sort_list_items` | Sort array elements |
+| `sort_all` | Sort both keys and array elements |
+
+Global `actions` apply to any scope set to `true`. A scope set to an object uses its own action toggles and ignores the global `actions`.
 
 ## Supported languages
 
