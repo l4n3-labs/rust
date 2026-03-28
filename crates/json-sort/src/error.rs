@@ -25,7 +25,7 @@ impl fmt::Display for SortError {
             Self::InvalidRange { start, end, len } => {
                 write!(f, "invalid range {start}..{end} for document of length {len}")
             }
-            Self::Serialize(msg) => write!(f, "serialization error: {msg}"),
+            Self::Serialize(msg) => write!(f, "JSON serialization error: {msg}"),
         }
     }
 }
