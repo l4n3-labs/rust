@@ -105,6 +105,17 @@ Tags follow the pattern `<crate-name>-v<version>` (e.g. `json-sort-server-v0.2.0
 | `.github/workflows/release-tags.yml` | Creates git tags and GitHub releases on PR merge |
 | `.github/workflows/release.yml` | Builds cross-platform binaries on tag push |
 
+### Required Secrets
+
+`release-tags.yml` uses a **GitHub App token** (not `GITHUB_TOKEN`) so that tag pushes trigger the downstream binary build workflow. This requires:
+
+| Secret/Variable | Type | Description |
+|---|---|---|
+| `APP_ID` | Repository variable | GitHub App ID |
+| `APP_PRIVATE_KEY` | Repository secret | GitHub App private key (`.pem` contents) |
+
+To set up: register a GitHub App with **Contents: Read & write** permission, install it on this repository, then add the App ID and private key to the repo's settings.
+
 ## Local Preview
 
 ```bash
