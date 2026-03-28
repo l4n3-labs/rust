@@ -34,7 +34,7 @@ jobs:
             os: windows-latest
             use_cross: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -68,7 +68,7 @@ jobs:
         run: 7z a json-sort-server-${{ matrix.target }}.zip ./target/${{ matrix.target }}/release/json-sort-server.exe
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: json-sort-server-${{ matrix.target }}
           path: json-sort-server-${{ matrix.target }}.*
@@ -78,7 +78,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           merge-multiple: true
 
