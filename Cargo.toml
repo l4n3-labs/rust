@@ -6,7 +6,7 @@ members = ["crates/*"]
 authors = ["L4N3 <labs@l4n3.net>"]
 edition = "2024"
 repository = "https://github.com/l4n3-labs/rust"
-license = "MIT"
+license = "Apache-2.0"
 
 [workspace.lints.clippy]
 all = { level = "deny", priority = -1 }
