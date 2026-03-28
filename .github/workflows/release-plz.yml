@@ -49,6 +49,7 @@ jobs:
         uses: release-plz/action@v0.5
         with:
           command: release-pr
+          verbose: "true"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RUST_LOG: "release_plz=debug"
+          RELEASE_PLZ_LOG: debug
