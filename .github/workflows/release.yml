@@ -85,6 +85,7 @@ jobs:
       - name: Upload assets to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          prerelease: false
           files: |
             json-sort-server-*.tar.gz
             json-sort-server-*.zip

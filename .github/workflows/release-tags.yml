@@ -74,7 +74,7 @@ jobs:
             git push origin "${TAG}"
 
             echo "  Creating GitHub release for ${TAG}..."
-            gh release create "${TAG}" --title "${TAG}" --notes "${NOTES}"
+            gh release create "${TAG}" --title "${TAG}" --notes "${NOTES}" --prerelease
 
             echo "  Done with ${crate}."
             echo "::endgroup::"
