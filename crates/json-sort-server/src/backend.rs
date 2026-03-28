@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::ops::Range as StdRange;
+use std::sync::RwLock;
 
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::{
@@ -12,6 +13,7 @@ use tower_lsp::{Client, LanguageServer};
 
 use crate::cursor;
 use crate::documents::DocumentStore;
+use crate::settings::Settings;
 
 /// LSP backend that holds the client connection and open document state.
 pub struct Backend {
@@ -19,12 +21,14 @@ pub struct Backend {
     client: Client,
     /// In-memory store for open document contents.
     pub documents: DocumentStore,
+    /// User-configurable settings parsed from `initializationOptions`.
+    settings: RwLock<Settings>,
 }
 
 impl Backend {
     /// Create a new backend with an empty document store.
     pub fn new(client: Client) -> Self {
-        Self { client, documents: DocumentStore::new() }
+        Self { client, documents: DocumentStore::new(), settings: RwLock::new(Settings::default()) }
     }
 }
 
@@ -57,44 +61,52 @@ pub fn resolve_sort_action_range(content: &str, action_index: usize, range: StdR
 ///
 /// Extracted from the `LanguageServer::code_action` handler so it can be tested
 /// without constructing a full [`Backend`] (which requires a `tower_lsp::Client`).
-pub fn build_code_actions(content: &str, uri: &Url, cursor: Position) -> Vec<CodeActionOrCommand> {
+pub fn build_code_actions(content: &str, uri: &Url, cursor: Position, settings: &Settings) -> Vec<CodeActionOrCommand> {
     let mut actions: Vec<CodeActionOrCommand> = Vec::new();
+    let enabled_actions = |scope: &crate::settings::ScopeConfig| {
+        let scope = scope.clone();
+        let global = settings.actions.clone();
+        crate::actions::ACTIONS.iter().enumerate().filter(move |(i, _)| scope.is_action_enabled(*i, &global))
+    };
 
     // Deep Sort — sorts entire document recursively (default).
-    let deep_actions = crate::actions::ACTIONS.iter().enumerate().map(|(i, def)| {
-        CodeActionOrCommand::CodeAction(CodeAction {
-            title: def.title.to_string(),
-            kind: Some(CodeActionKind::REFACTOR_REWRITE),
-            data: Some(serde_json::json!({
-                "action_index": i,
-                "uri": uri.to_string(),
-            })),
-            ..Default::default()
-        })
-    });
-    actions.extend(deep_actions);
+    if settings.scopes.deep.is_enabled() {
+        actions.extend(enabled_actions(&settings.scopes.deep).map(|(i, def)| {
+            CodeActionOrCommand::CodeAction(CodeAction {
+                title: def.title.to_string(),
+                kind: Some(CodeActionKind::REFACTOR_REWRITE),
+                data: Some(serde_json::json!({
+                    "action_index": i,
+                    "uri": uri.to_string(),
+                })),
+                ..Default::default()
+            })
+        }));
+    }
 
     // Shallow Sort — sorts only top-level keys of the root object.
-    let shallow_actions = crate::actions::ACTIONS.iter().enumerate().map(|(i, def)| {
-        CodeActionOrCommand::CodeAction(CodeAction {
-            title: crate::actions::shallow_title(def),
-            kind: Some(CodeActionKind::REFACTOR_REWRITE),
-            data: Some(serde_json::json!({
-                "action_index": i,
-                "uri": uri.to_string(),
-                "shallow": true,
-            })),
-            ..Default::default()
-        })
-    });
-    actions.extend(shallow_actions);
+    if settings.scopes.shallow.is_enabled() {
+        actions.extend(enabled_actions(&settings.scopes.shallow).map(|(i, def)| {
+            CodeActionOrCommand::CodeAction(CodeAction {
+                title: crate::actions::shallow_title(def),
+                kind: Some(CodeActionKind::REFACTOR_REWRITE),
+                data: Some(serde_json::json!({
+                    "action_index": i,
+                    "uri": uri.to_string(),
+                    "shallow": true,
+                })),
+                ..Default::default()
+            })
+        }));
+    }
 
     // Subtree Sort — sorts the innermost object/array under the cursor.
-    if let Some(offset) = cursor::position_to_offset(content, cursor)
+    if settings.scopes.subtree.is_enabled()
+        && let Some(offset) = cursor::position_to_offset(content, cursor)
         && let Some(enc_range) = cursor::find_enclosing_range(content, offset)
         && !cursor::is_root_range(content, &enc_range)
     {
-        let subtree_actions = crate::actions::ACTIONS.iter().enumerate().map(|(i, def)| {
+        actions.extend(enabled_actions(&settings.scopes.subtree).map(|(i, def)| {
             CodeActionOrCommand::CodeAction(CodeAction {
                 title: crate::actions::subtree_title(def),
                 kind: Some(CodeActionKind::REFACTOR_REWRITE),
@@ -106,8 +118,7 @@ pub fn build_code_actions(content: &str, uri: &Url, cursor: Position) -> Vec<Cod
                 })),
                 ..Default::default()
             })
-        });
-        actions.extend(subtree_actions);
+        }));
     }
 
     actions
@@ -157,7 +168,12 @@ pub fn resolve_code_action(content: &str, mut action: CodeAction) -> CodeAction 
 
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
-    async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
+    async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
+        if let Some(opts) = params.initialization_options
+            && let Ok(s) = serde_json::from_value::<Settings>(opts)
+        {
+            *self.settings.write().unwrap() = s;
+        }
         Ok(InitializeResult {
             capabilities: ServerCapabilities {
                 text_document_sync: Some(TextDocumentSyncCapability::Kind(TextDocumentSyncKind::FULL)),
@@ -198,7 +214,8 @@ impl LanguageServer for Backend {
         let Some(content) = self.documents.get(uri) else {
             return Ok(None);
         };
-        Ok(Some(build_code_actions(&content, uri, params.range.start)))
+        let settings = self.settings.read().unwrap().clone();
+        Ok(Some(build_code_actions(&content, uri, params.range.start, &settings)))
     }
 
     async fn code_action_resolve(&self, action: CodeAction) -> Result<CodeAction> {
@@ -355,7 +372,7 @@ mod tests {
         // Cursor inside the root object — no subtree actions should appear.
         let content = r#"{"b": 2, "a": 1}"#;
         let cursor = Position { line: 0, character: 5 };
-        let actions = build_code_actions(content, &test_uri(), cursor);
+        let actions = build_code_actions(content, &test_uri(), cursor, &Settings::default());
         // 9 deep + 9 shallow = 18
         assert_eq!(actions.len(), 18);
         let titles = extract_titles(&actions);
@@ -371,7 +388,7 @@ mod tests {
     fn code_action_cursor_in_nested_object_returns_all_three_groups() {
         let content = r#"{"outer": {"c": 3, "a": 1}}"#;
         let cursor = Position { line: 0, character: 14 };
-        let actions = build_code_actions(content, &test_uri(), cursor);
+        let actions = build_code_actions(content, &test_uri(), cursor, &Settings::default());
         // 9 deep + 9 shallow + 9 subtree = 27
         assert_eq!(actions.len(), 27);
 
@@ -391,7 +408,7 @@ mod tests {
     fn code_action_subtree_stubs_carry_range_metadata() {
         let content = r#"{"outer": {"c": 3, "a": 1}}"#;
         let cursor = Position { line: 0, character: 14 };
-        let actions = build_code_actions(content, &test_uri(), cursor);
+        let actions = build_code_actions(content, &test_uri(), cursor, &Settings::default());
 
         // Index 18 = first subtree action (after 9 deep + 9 shallow)
         let first_subtree = extract_action(&actions, 18);
@@ -408,7 +425,7 @@ mod tests {
     fn code_action_shallow_stubs_carry_shallow_flag() {
         let content = r#"{"b": 2, "a": 1}"#;
         let cursor = Position { line: 0, character: 5 };
-        let actions = build_code_actions(content, &test_uri(), cursor);
+        let actions = build_code_actions(content, &test_uri(), cursor, &Settings::default());
 
         // Index 9 = first shallow action
         let first_shallow = extract_action(&actions, 9);
@@ -420,7 +437,7 @@ mod tests {
     fn code_action_deep_stubs_have_no_range_or_shallow() {
         let content = r#"{"outer": {"c": 3, "a": 1}}"#;
         let cursor = Position { line: 0, character: 14 };
-        let actions = build_code_actions(content, &test_uri(), cursor);
+        let actions = build_code_actions(content, &test_uri(), cursor, &Settings::default());
 
         let first_deep = extract_action(&actions, 0);
         let data = first_deep.data.as_ref().unwrap();
@@ -432,7 +449,7 @@ mod tests {
     fn code_action_cursor_in_nested_array_returns_subtree_actions() {
         let content = r#"{"items": [3, 1, 2]}"#;
         let cursor = Position { line: 0, character: 12 };
-        let actions = build_code_actions(content, &test_uri(), cursor);
+        let actions = build_code_actions(content, &test_uri(), cursor, &Settings::default());
         // 9 deep + 9 shallow + 9 subtree = 27
         assert_eq!(actions.len(), 27);
 
@@ -448,7 +465,7 @@ mod tests {
     fn code_action_shallow_stubs_have_no_range_metadata() {
         let content = r#"{"outer": {"c": 3, "a": 1}}"#;
         let cursor = Position { line: 0, character: 14 };
-        let actions = build_code_actions(content, &test_uri(), cursor);
+        let actions = build_code_actions(content, &test_uri(), cursor, &Settings::default());
 
         // Index 9 = first shallow action
         let first_shallow = extract_action(&actions, 9);
@@ -461,7 +478,7 @@ mod tests {
     fn code_action_all_stubs_have_refactor_rewrite_kind() {
         let content = r#"{"outer": {"c": 3, "a": 1}}"#;
         let cursor = Position { line: 0, character: 14 };
-        let actions = build_code_actions(content, &test_uri(), cursor);
+        let actions = build_code_actions(content, &test_uri(), cursor, &Settings::default());
 
         for (i, action) in actions.iter().enumerate() {
             let CodeActionOrCommand::CodeAction(ca) = action else {
@@ -476,7 +493,7 @@ mod tests {
         // A bare primitive has no enclosing brackets for subtree
         let content = "42";
         let cursor = Position { line: 0, character: 0 };
-        let actions = build_code_actions(content, &test_uri(), cursor);
+        let actions = build_code_actions(content, &test_uri(), cursor, &Settings::default());
         // 9 deep + 9 shallow, no subtree
         assert_eq!(actions.len(), 18);
     }
@@ -486,7 +503,7 @@ mod tests {
         let content = r#"{"outer": {"c": 3, "a": 1}}"#;
         let cursor = Position { line: 0, character: 14 };
         let uri = test_uri();
-        let actions = build_code_actions(content, &uri, cursor);
+        let actions = build_code_actions(content, &uri, cursor, &Settings::default());
 
         for (i, action) in actions.iter().enumerate() {
             let CodeActionOrCommand::CodeAction(ca) = action else {
@@ -708,5 +725,193 @@ mod tests {
         // Nested keys should be sorted (deep behavior)
         let inner_keys: Vec<&String> = parsed["b"].as_object().unwrap().keys().collect();
         assert_eq!(inner_keys, vec!["a", "z"]);
+    }
+
+    // ── settings filtering ─────────────────────────────────────────
+
+    use crate::settings::{ActionSettings, ScopeConfig, ScopeSettings};
+
+    #[test]
+    fn settings_deep_scope_disabled_omits_deep_actions() {
+        let content = r#"{"b": 2, "a": 1}"#;
+        let cursor = Position { line: 0, character: 5 };
+        let settings = Settings {
+            scopes: ScopeSettings { deep: ScopeConfig::Enabled(false), ..Default::default() },
+            ..Default::default()
+        };
+        let actions = build_code_actions(content, &test_uri(), cursor, &settings);
+        // Only shallow (9), no deep
+        assert_eq!(actions.len(), 9);
+        let titles = extract_titles(&actions);
+        for title in &titles {
+            assert!(title.starts_with("Shallow Sort:"), "unexpected: {title}");
+        }
+    }
+
+    #[test]
+    fn settings_shallow_scope_disabled_omits_shallow_actions() {
+        let content = r#"{"b": 2, "a": 1}"#;
+        let cursor = Position { line: 0, character: 5 };
+        let settings = Settings {
+            scopes: ScopeSettings { shallow: ScopeConfig::Enabled(false), ..Default::default() },
+            ..Default::default()
+        };
+        let actions = build_code_actions(content, &test_uri(), cursor, &settings);
+        assert_eq!(actions.len(), 9);
+        let titles = extract_titles(&actions);
+        for title in &titles {
+            assert!(title.starts_with("Deep Sort:"), "unexpected: {title}");
+        }
+    }
+
+    #[test]
+    fn settings_subtree_scope_disabled_omits_subtree_actions() {
+        let content = r#"{"outer": {"c": 3, "a": 1}}"#;
+        let cursor = Position { line: 0, character: 14 };
+        let settings = Settings {
+            scopes: ScopeSettings { subtree: ScopeConfig::Enabled(false), ..Default::default() },
+            ..Default::default()
+        };
+        let actions = build_code_actions(content, &test_uri(), cursor, &settings);
+        assert_eq!(actions.len(), 18);
+    }
+
+    #[test]
+    fn settings_all_scopes_disabled_returns_empty() {
+        let content = r#"{"b": 2, "a": 1}"#;
+        let cursor = Position { line: 0, character: 5 };
+        let settings = Settings {
+            scopes: ScopeSettings {
+                deep: ScopeConfig::Enabled(false),
+                shallow: ScopeConfig::Enabled(false),
+                subtree: ScopeConfig::Enabled(false),
+            },
+            ..Default::default()
+        };
+        let actions = build_code_actions(content, &test_uri(), cursor, &settings);
+        assert!(actions.is_empty());
+    }
+
+    #[test]
+    fn settings_global_action_disabled_omits_from_all_scopes() {
+        let content = r#"{"outer": {"c": 3, "a": 1}}"#;
+        let cursor = Position { line: 0, character: 14 };
+        let settings =
+            Settings { actions: ActionSettings { randomize: false, ..Default::default() }, ..Default::default() };
+        let actions = build_code_actions(content, &test_uri(), cursor, &settings);
+        // 8 per scope × 3 scopes = 24
+        assert_eq!(actions.len(), 24);
+        let titles = extract_titles(&actions);
+        for title in &titles {
+            assert!(!title.contains("Randomize"), "randomize should be filtered: {title}");
+        }
+    }
+
+    #[test]
+    fn settings_all_global_actions_disabled_returns_empty() {
+        let content = r#"{"b": 2, "a": 1}"#;
+        let cursor = Position { line: 0, character: 5 };
+        let settings = Settings {
+            actions: ActionSettings {
+                ascending: false,
+                descending: false,
+                randomize: false,
+                by_value: false,
+                by_key_length: false,
+                by_value_length: false,
+                by_value_type: false,
+                sort_list_items: false,
+                sort_all: false,
+            },
+            ..Default::default()
+        };
+        let actions = build_code_actions(content, &test_uri(), cursor, &settings);
+        assert!(actions.is_empty());
+    }
+
+    #[test]
+    fn settings_mixed_scopes_and_global_actions() {
+        let content = r#"{"b": 2, "a": 1}"#;
+        let cursor = Position { line: 0, character: 5 };
+        let settings = Settings {
+            scopes: ScopeSettings {
+                deep: ScopeConfig::Enabled(true),
+                shallow: ScopeConfig::Enabled(false),
+                subtree: ScopeConfig::Enabled(true),
+            },
+            actions: ActionSettings {
+                ascending: true,
+                descending: true,
+                randomize: false,
+                by_value: false,
+                by_key_length: false,
+                by_value_length: false,
+                by_value_type: false,
+                sort_list_items: false,
+                sort_all: false,
+            },
+        };
+        let actions = build_code_actions(content, &test_uri(), cursor, &settings);
+        // Only deep scope at root (no subtree at root), 2 enabled actions
+        assert_eq!(actions.len(), 2);
+        let titles = extract_titles(&actions);
+        assert_eq!(titles, vec!["Deep Sort: Ascending", "Deep Sort: Descending"]);
+    }
+
+    #[test]
+    fn settings_per_scope_action_overrides() {
+        let content = r#"{"outer": {"c": 3, "a": 1}}"#;
+        let cursor = Position { line: 0, character: 14 };
+        // Global disables randomize; deep uses global; subtree overrides to enable only randomize
+        let settings = Settings {
+            scopes: ScopeSettings {
+                deep: ScopeConfig::Enabled(true),
+                shallow: ScopeConfig::Enabled(false),
+                subtree: ScopeConfig::Actions(ActionSettings {
+                    ascending: false,
+                    descending: false,
+                    randomize: true,
+                    by_value: false,
+                    by_key_length: false,
+                    by_value_length: false,
+                    by_value_type: false,
+                    sort_list_items: false,
+                    sort_all: false,
+                }),
+            },
+            actions: ActionSettings { randomize: false, ..Default::default() },
+        };
+        let actions = build_code_actions(content, &test_uri(), cursor, &settings);
+        let titles = extract_titles(&actions);
+        // Deep: 8 actions (global minus randomize), Subtree: 1 action (only randomize)
+        assert_eq!(actions.len(), 9);
+        // Deep should not have Randomize
+        assert_eq!(titles.iter().filter(|t| t.starts_with("Deep Sort:")).count(), 8);
+        assert!(!titles.iter().any(|t| t.starts_with("Deep Sort:") && t.contains("Randomize")));
+        // Subtree should only have Randomize
+        assert_eq!(titles.iter().filter(|t| t.starts_with("Subtree Sort:")).count(), 1);
+        assert!(titles.iter().any(|t| t == &"Subtree Sort: Randomize"));
+    }
+
+    #[test]
+    fn settings_per_scope_object_ignores_global_actions() {
+        let content = r#"{"b": 2, "a": 1}"#;
+        let cursor = Position { line: 0, character: 5 };
+        // Global disables ascending, but deep scope object enables it
+        let settings = Settings {
+            scopes: ScopeSettings {
+                deep: ScopeConfig::Actions(ActionSettings { ascending: true, ..Default::default() }),
+                shallow: ScopeConfig::Enabled(true),
+                ..Default::default()
+            },
+            actions: ActionSettings { ascending: false, ..Default::default() },
+        };
+        let actions = build_code_actions(content, &test_uri(), cursor, &settings);
+        let titles = extract_titles(&actions);
+        // Deep has all 9 (ascending enabled per-scope)
+        assert_eq!(titles.iter().filter(|t| t.starts_with("Deep Sort:")).count(), 9);
+        // Shallow uses global: 8 (ascending disabled)
+        assert_eq!(titles.iter().filter(|t| t.starts_with("Shallow Sort:")).count(), 8);
+        assert!(!titles.iter().any(|t| t.starts_with("Shallow Sort:") && t.contains("Ascending")));
     }
 }

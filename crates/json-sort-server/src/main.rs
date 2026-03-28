@@ -14,6 +14,7 @@ mod actions;
 mod backend;
 mod cursor;
 mod documents;
+mod settings;
 
 use backend::Backend;
 use tower_lsp::{LspService, Server};

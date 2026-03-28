@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/l4n3-labs/rust/blob/main/crates/json-sort-server/settings-schema.json",
+  "title": "json-sort-server settings",
+  "description": "Configuration for the json-sort-server LSP, passed via initializationOptions.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "scopes": {
+      "description": "Toggle sort scopes. Each scope accepts `true` (enabled, uses global actions), `false` (disabled), or an actions object for per-scope overrides.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "deep": { "$ref": "#/$defs/scopeConfig" },
+        "shallow": { "$ref": "#/$defs/scopeConfig" },
+        "subtree": { "$ref": "#/$defs/scopeConfig" }
+      }
+    },
+    "actions": { "$ref": "#/$defs/actionSettings" }
+  },
+  "$defs": {
+    "scopeConfig": {
+      "description": "`true` to enable (inherits global actions), `false` to disable, or an actions object for per-scope overrides.",
+      "default": true,
+      "oneOf": [
+        { "type": "boolean" },
+        { "$ref": "#/$defs/actionSettings" }
+      ]
+    },
+    "actionSettings": {
+      "description": "Toggle individual sort strategies. All default to `true`.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ascending": {
+          "description": "Sort object keys alphabetically A→Z.",
+          "type": "boolean",
+          "default": true
+        },
+        "descending": {
+          "description": "Sort object keys alphabetically Z→A.",
+          "type": "boolean",
+          "default": true
+        },
+        "randomize": {
+          "description": "Shuffle entries into a random order.",
+          "type": "boolean",
+          "default": true
+        },
+        "by_value": {
+          "description": "Sort by the stringified JSON value.",
+          "type": "boolean",
+          "default": true
+        },
+        "by_key_length": {
+          "description": "Sort by the string length of the key name.",
+          "type": "boolean",
+          "default": true
+        },
+        "by_value_length": {
+          "description": "Sort by the length/size of the value.",
+          "type": "boolean",
+          "default": true
+        },
+        "by_value_type": {
+          "description": "Group entries by JSON value type (bool, null, number, string, array, object).",
+          "type": "boolean",
+          "default": true
+        },
+        "sort_list_items": {
+          "description": "Sort the elements of JSON arrays.",
+          "type": "boolean",
+          "default": true
+        },
+        "sort_all": {
+          "description": "Sort both object properties and array elements.",
+          "type": "boolean",
+          "default": true
+        }
+      }
+    }
+  }
+}
