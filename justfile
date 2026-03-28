@@ -53,12 +53,12 @@ check: fmt-check lint test
 clean:
     cargo clean
 
-# Check what release-plz would do (dry run)
-release-dry-run:
-    cargo install release-plz --locked
-    release-plz update --dry-run
+# Preview unreleased changelog for a crate
+changelog-preview crate:
+    git cliff --tag-pattern "^{{crate}}-v" --include-path "crates/{{crate}}/**" --unreleased
 
-# Generate changelogs locally without committing
+# Show next version bump for all releasable crates
 release-preview:
-    cargo install release-plz --locked
-    release-plz update
+    @echo "json-sort: $(git cliff --tag-pattern '^json-sort-v' --include-path 'crates/json-sort/**' --bumped-version 2>/dev/null | sed 's/^json-sort-v//' || echo 'no changes')"
+    @echo "json-sort-server: $(git cliff --tag-pattern '^json-sort-server-v' --include-path 'crates/json-sort-server/**' --bumped-version 2>/dev/null | sed 's/^json-sort-server-v//' || echo 'no changes')"
+

@@ -87,9 +87,9 @@ Scopes are optional but encouraged for multi-crate changes (e.g. `feat(json-sort
 
 ## Release Process
 
-Releases are automated via [release-plz](https://release-plz.dev/). On every push to `main`:
-1. `release-plz` opens/updates a Release PR with version bumps and changelog entries
+Releases are automated via [git-cliff](https://git-cliff.org/) and GitHub Actions. On every push to `main`:
+1. A workflow computes version bumps from conventional commits and opens/updates a Release PR
 2. A maintainer reviews and merges the Release PR
-3. `release-plz` reates git tags and creates GitHub releases
+3. A workflow creates git tags and GitHub releases, triggering cross-platform binary builds
 
 Do NOT manually push version tags or edit `Cargo.toml` versions for releases.
