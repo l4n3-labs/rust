@@ -81,7 +81,7 @@ fn emit_comment(comment: &Comment<'_>, indent: &str, depth: usize, output: &mut 
 }
 
 // Recursively emit a JSON value. Objects and arrays are dispatched to their
-// specialized emitters; primitives are copied verbatim from the source text.
+// specialized emitters. All other primitives are copied verbatim from the source text.
 fn emit_value(
     source: &str,
     value: &Value<'_>,
