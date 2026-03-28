@@ -45,11 +45,21 @@ jobs:
     steps:
       - *checkout
       - *install-rust
-      - name: Run release-plz release-pr
-        uses: release-plz/action@v0.5
+      - name: Install release-plz
+        uses: taiki-e/install-action@v2
         with:
-          command: release-pr
-          verbose: "true"
+          tool: release-plz@0.3.157
+      - name: Configure git
+        run: |
+          git config --global user.name "release-plz[bot]"
+          git config --global user.email "release-plz[bot]@users.noreply.github.com"
+      - name: Run release-plz release-pr (debug)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_PLZ_LOG: debug
+        run: |
+          echo "=== git tags ==="
+          git tag -l
+          echo "=== running release-plz ==="
+          release-plz release-pr --git-token "$GITHUB_TOKEN" -vvv -o json 2>&1 | tee /tmp/release-plz-output.txt
+          echo "=== done ==="
