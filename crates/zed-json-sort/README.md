@@ -1,17 +1,17 @@
 # JSON Sort (Zed Extension)
 
-Sort JSON and JSONC files directly from Zed using code actions. Powered by `json-sort-server`.
+Sort JSON and JSONC files in Zed using code actions. Powered by `json-sort-server`.
 
 ## Background
 
-I migrated from VS Code to Neovim, then landed on Zed — it's been significantly more productive to use day-to-day and easier to maintain over time. One feature I relied on heavily in VS Code was sorting JSON files directly in the editor. Zed doesn't have this built in, and it's been requested a few times:
+I migrated from VS Code to Neovim, then landed on Zed — it's been way more productive day to day and easier to maintain over time. One thing I relied on in VS Code was sorting JSON files directly in the editor. Zed doesn't have this, and it's come up a few times:
 
 - [zed-industries/zed#48465](https://github.com/zed-industries/zed/issues/48465)
 - [zed-industries/zed#16746](https://github.com/zed-industries/zed/issues/16746)
 
-This extension fills that gap with a custom LSP server (`json-sort-server`) that handles sorting via code actions. It goes beyond what `json-language-server` offers — 9 sort strategies, 3 sort scopes (deep, shallow, subtree), and full JSONC support with comment preservation.
+This extension fills that gap with a custom LSP server (`json-sort-server`) that handles sorting via code actions. It does more than `json-language-server` — 9 sort strategies, 3 sort scopes (deep, shallow, subtree), and full JSONC support with comment preservation.
 
-My primary languages are TypeScript, Python, and Scala — this project is how I'm learning Rust. I've used AI to help work through some problems, but I've extensively manually tested everything and have enough technical background to stand behind the code.
+My primary languages are TypeScript, Python, and Scala — this project is how I'm learning Rust. I've used AI to help work through some problems, but I've manually tested everything extensively and have enough technical background to stand behind the code.
 
 ## Installation
 
@@ -21,49 +21,49 @@ My primary languages are TypeScript, Python, and Scala — this project is how I
 2. Search for **JSON Sort**.
 3. Click **Install**.
 
-The extension will automatically download the `json-sort-server` binary for your platform on first use.
+The extension automatically downloads the `json-sort-server` binary for your platform on first use.
 
 ### Manual installation
 
-If you prefer to install the LSP server yourself:
+If you'd rather install the LSP server yourself:
 
 ```sh
 cargo install --path crates/json-sort-server
 ```
 
-The extension checks your `PATH` for `json-sort-server` before attempting a download.
+The extension checks your `PATH` for `json-sort-server` before trying to download anything.
 
 ## Usage
 
 1. Open a `.json` or `.jsonc` file in Zed.
 2. Open the code actions menu (`Cmd+.`).
-3. Select a sort action from the list.
+3. Pick a sort action.
 
-## Sort Scopes
+## Sort scopes
 
 Actions are grouped into three scopes:
 
-- **Deep Sort** — sorts the entire document recursively (all nested objects and arrays).
-- **Shallow Sort** — sorts only the immediate top-level keys of the root object; nested structures are left untouched.
-- **Subtree Sort** — sorts the object or array under the cursor and all of its descendants. Only appears when the cursor is inside a nested (non-root) container.
+- **Deep** — sorts the entire document recursively, all nested objects and arrays.
+- **Shallow** — sorts only the top-level keys of the root object. Nested structures stay untouched.
+- **Subtree** — sorts the object or array under the cursor and everything inside it. Only shows up when the cursor is inside a nested (non-root) container.
 
-## Available Sort Actions
+## Available sort actions
 
-Each scope offers the same 9 sort strategies:
+Each scope has the same 9 strategies:
 
-| Strategy | Description |
+| Strategy | What it does |
 |---|---|
-| Ascending | Sort object keys A→Z |
-| Descending | Sort object keys Z→A |
-| Randomize | Shuffle object keys randomly |
-| By Value | Sort object entries by their values |
-| By Key Length | Sort object keys by string length |
+| Ascending | Sort keys A→Z |
+| Descending | Sort keys Z→A |
+| Randomize | Shuffle keys randomly |
+| By Value | Sort entries by their values |
+| By Key Length | Sort keys by string length |
 | By Value Length | Sort entries by the length/size of values |
 | By Value Type | Group entries by JSON type (bool, null, number, string, array, object) |
 | Sort List Items | Sort array elements |
-| Sort All (Objects + Lists) | Sort both object keys and array elements |
+| Sort All (Objects + Lists) | Sort both keys and array elements |
 
-For example, opening the code actions menu while inside a nested object will show actions like `Deep Sort: Ascending`, `Shallow Sort: Ascending`, and `Subtree Sort: Ascending`.
+So if your cursor is inside a nested object, the code actions menu shows things like `Deep Sort: Ascending`, `Shallow Sort: Ascending`, and `Subtree Sort: Ascending`.
 
 ## Configuration
 
@@ -79,9 +79,9 @@ Add LSP settings in your Zed `settings.json` (open with `Cmd+,`):
 }
 ```
 
-The `initialization_options` object is passed through to the LSP server on startup.
+The `initialization_options` object gets passed to the LSP server on startup.
 
-## Supported Languages
+## Supported languages
 
 - JSON
 - JSONC (JSON with Comments)
