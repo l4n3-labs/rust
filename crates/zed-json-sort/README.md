@@ -2,6 +2,17 @@
 
 Sort JSON and JSONC files directly from Zed using code actions. Powered by `json-sort-server`.
 
+## Background
+
+I migrated from VS Code to Neovim, then landed on Zed — it's been significantly more productive to use day-to-day and easier to maintain over time. One feature I relied on heavily in VS Code was sorting JSON files directly in the editor. Zed doesn't have this built in, and it's been requested a few times:
+
+- [zed-industries/zed#48465](https://github.com/zed-industries/zed/issues/48465)
+- [zed-industries/zed#16746](https://github.com/zed-industries/zed/issues/16746)
+
+This extension fills that gap with a custom LSP server (`json-sort-server`) that handles sorting via code actions. It goes beyond what `json-language-server` offers — 9 sort strategies, 3 sort scopes (deep, shallow, subtree), and full JSONC support with comment preservation.
+
+My primary languages are TypeScript, Python, and Scala — this project is how I'm learning Rust. I've used AI to help work through some problems, but I've extensively manually tested everything and have enough technical background to stand behind the code.
+
 ## Installation
 
 ### From the Zed Extensions panel

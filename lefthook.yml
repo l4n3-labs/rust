@@ -7,3 +7,15 @@ pre-commit:
     clippy:
       glob: "*.rs"
       run: cargo clippy --workspace --all-targets -- -D warnings
+
+commit-msg:
+  commands:
+    conventional-commit:
+      run: |
+        MSG=$(cat {1})
+        if ! echo "$MSG" | grep -qE '^(feat|fix|docs|chore|ci|refactor|test|perf|style|build)(\(.+\))?(!)?: .+'; then
+          echo "ERROR: Commit message does not follow Conventional Commits format."
+          echo "Expected: <type>[optional scope]: <description>"
+          echo "Got: $MSG"
+          exit 1
+        fi

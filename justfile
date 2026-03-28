@@ -52,3 +52,13 @@ check: fmt-check lint test
 # Clean build artifacts
 clean:
     cargo clean
+
+# Check what release-plz would do (dry run)
+release-dry-run:
+    cargo install release-plz --locked
+    release-plz update --dry-run
+
+# Generate changelogs locally without committing
+release-preview:
+    cargo install release-plz --locked
+    release-plz update

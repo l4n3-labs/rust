@@ -65,3 +65,31 @@ workspace = true
 - Tests colocated in source files using `#[cfg(test)] mod tests { ... }`
 - Integration tests in `tests/` directory when needed
 - Pre-commit hooks run format check and clippy via Lefthook
+
+## Commit Convention
+
+This repository uses [Conventional Commits](https://www.conventionalcommits.org/).
+All commits to `main` must follow this format:
+
+```
+<type>[optional scope]: <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+Types: `feat`, `fix`, `docs`, `chore`, `ci`, `refactor`, `test`, `perf`, `style`, `build`
+
+Breaking changes: append `!` after the type (e.g. `feat!:`) or include a `BREAKING CHANGE:` footer.
+
+Scopes are optional but encouraged for multi-crate changes (e.g. `feat(json-sort): ...`).
+
+## Release Process
+
+Releases are automated via [release-plz](https://release-plz.dev/). On every push to `main`:
+1. `release-plz` opens/updates a Release PR with version bumps and changelog entries
+2. A maintainer reviews and merges the Release PR
+3. `release-plz` reates git tags and creates GitHub releases
+
+Do NOT manually push version tags or edit `Cargo.toml` versions for releases.

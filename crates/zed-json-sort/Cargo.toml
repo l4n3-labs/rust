@@ -5,6 +5,7 @@ edition = "2021"
 license.workspace = true
 authors.workspace = true
 description = "Zed editor extension for sorting JSON/JSONC files"
+publish = false
 
 [lib]
 crate-type = ["cdylib"]
