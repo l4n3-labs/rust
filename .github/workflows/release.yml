@@ -68,7 +68,7 @@ jobs:
         run: 7z a json-sort-server-${{ matrix.target }}.zip ./target/${{ matrix.target }}/release/json-sort-server.exe
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: json-sort-server-${{ matrix.target }}
           path: json-sort-server-${{ matrix.target }}.*
